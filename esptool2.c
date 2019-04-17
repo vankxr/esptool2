@@ -107,7 +107,7 @@ bool WriteElfSection(MyElf_File *elf, FILE *outfile, char* name, bool headed,
 	// create image section header
 	sechead.addr = (zeroaddr ? 0 : sect->address);
 	sechead.size = sect->size;
-	
+
 	// do we need to pad the section?
 	if (padto) {
 		pad = sechead.size % padto;
@@ -119,13 +119,13 @@ bool WriteElfSection(MyElf_File *elf, FILE *outfile, char* name, bool headed,
 
 	debug("Adding section '%s', addr: 0x%08x, size: %d (+%d bytes(s) padding).\r\n",
 		name, sect->address, sect->size, pad);
-	
+
 	// get elf section binary data
 	bindata = GetElfSectionData(elf, sect);
 	if (!bindata) {
 		goto end_function;
 	}
-	
+
 	// write section (and pad if required)
 	if((headed && fwrite(&sechead, 1, sizeof(sechead), outfile) != sizeof(sechead))
 		|| fwrite(bindata, 1, sect->size, outfile) != sect->size
@@ -133,7 +133,7 @@ bool WriteElfSection(MyElf_File *elf, FILE *outfile, char* name, bool headed,
 		error("Error: Failed to write section '%s' to image file.\r\n", name);
 		goto end_function;
 	}
-	
+
 	// include section data in the checksum
 	if(chksum) {
 		for(i = 0; i < (int)sect->size; i++) {
@@ -152,7 +152,7 @@ end_function:
 // header, padding or checksum. For exporting the .irom0.text library.
 // Produces error message on failure (so caller doesn't need to).
 bool ExportElfSection(char *infile, char *outfile, char *name) {
-	
+
 	bool ret = false;
 	FILE *fd = 0;
 	MyElf_File *elf = 0;
@@ -172,12 +172,12 @@ bool ExportElfSection(char *infile, char *outfile, char *name) {
 
 	// actually do the export
 	ret = WriteElfSection(elf, fd, name, false, false, false, 0);
-        
+
 end_function:
 	// clean up
 	if (fd) fclose(fd);
 	UnloadElf(elf);
-	
+
 	return ret;
 }
 
@@ -196,13 +196,13 @@ bool CreateHeaderFile(char *elffile, char *imagefile, char *sections[], int nums
 	MyElf_Section *sect;
 	unsigned char *bindata = 0;
 	char name[31];
-	
+
 	// load elf file
 	elf = LoadElf(elffile);
 	if (!elf) {
 		goto end_function;
 	}
-    
+
 	// open output file
 	outfile = fopen(imagefile, "wb");
 	if(outfile == NULL) {
@@ -242,14 +242,14 @@ bool CreateHeaderFile(char *elffile, char *imagefile, char *sections[], int nums
 
 		// add the data and finish off the block
 		for (j = 0; j < sect->size; j++) {
-			if (j % 16 == 0) fprintf(outfile, "\r\n  0x%02x,", bindata[j]);
+			if (j % 16 == 0) fprintf(outfile, "\r\n\t0x%02x,", bindata[j]);
 			else fprintf(outfile, " 0x%02x,", bindata[j]);
 		}
 		fprintf(outfile, "\r\n};\r\n");
 		free(bindata);
 		bindata = 0;
 	}
-	
+
 	// if we got this far everything worked!
 	ret = true;
 
@@ -258,7 +258,7 @@ end_function:
 	if (outfile) fclose(outfile);
 	if (elf) UnloadElf(elf);
 	if (bindata) free(bindata);
-	
+
 	return ret;
 }
 
@@ -277,13 +277,13 @@ bool CreateBinFile(char *elffile, char *imagefile, int bootver, unsigned char mo
 	FILE *outfile = 0;
 	MyElf_File *elf = 0;
 	Image_Header imghead;
-	
+
 	// load elf file
 	elf = LoadElf(elffile);
 	if (!elf) {
 		goto end_function;
 	}
-    
+
 	// open output file
 	outfile = fopen(imagefile, "wb");
 	if(outfile == NULL) {
@@ -330,7 +330,7 @@ bool CreateBinFile(char *elffile, char *imagefile, int bootver, unsigned char mo
 			goto end_function;
 		}
 	}
-	
+
 	// get image length (plus a byte for the checksum)
 	len = ftell(outfile) + 1;
 
@@ -382,7 +382,7 @@ end_function:
 	if (outfile) fclose(outfile);
 	if (data) free(data);
 	if (elf) UnloadElf(elf);
-	
+
 	return ret;
 }
 
@@ -438,12 +438,18 @@ int main(int argc, char *argv[]) {
 			size = 0;
 		} else if (!strcmp(argv[i], "-1024")) {
 			size = 2;
-		} else if (!strcmp(argv[i], "-2048")) {
+		} else if (!strcmp(argv[i], "-2048-512")) {
 			size = 3;
-		} else if (!strcmp(argv[i], "-2048b")) {
+		} else if (!strcmp(argv[i], "-4096-512")) {
+			size = 4;
+		} else if (!strcmp(argv[i], "-2048")) {
 			size = 5;
 		} else if (!strcmp(argv[i], "-4096")) {
-			size = 4;
+			size = 6;
+		} else if (!strcmp(argv[i], "-8192")) {
+			size = 7;
+		} else if (!strcmp(argv[i], "-16384")) {
+			size = 8;
 		} else if (!strcmp(argv[i], "-20")) {
 			clock = 2;
 		} else if (!strcmp(argv[i], "-26.7")) {
@@ -464,10 +470,6 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 	}
-
-	print("esptool2 v2.0.0 - (c) 2015 Richard A Burton <richardaburton@gmail.com>\r\n");
-	print("This program is licensed under the GPL v3.\r\n");
-    print("See the file LICENSE for details.\r\n\r\n");
 
 	if (paramerror) {
 		error("Error: Unrecognised option '%s'.\r\n", argv[i]);
@@ -498,7 +500,7 @@ int main(int argc, char *argv[]) {
 		print("          -boot1 = built for bootloader v1.1\r\n");
 		print("          -boot2 = built for bootloader v1.2+ (use for rBoot roms)\r\n");
 		print("          (elf file must have been linked appropriately for chosen option)\r\n");
-		print("        spi size (kb): -256 -512 -1024 -2048 -4096 (default -512)\r\n");
+		print("        spi size (kb): -256 -512 -1024 -2048-512 -4096-512 -2048 -4096 -8192 -16384 (default -512)\r\n");
 		print("        spi mode: -qio -qout -dio -dout (default -qio)\r\n");
 		print("        spi speed: -20 -26.7 -40 -80 (default -40)\r\n");
 		print("        include irom in checksum: -iromchksum (also needs enabling in rBoot)\r\n");
@@ -556,10 +558,10 @@ int main(int argc, char *argv[]) {
 			remove(outfile);
 			return -1;
 		}
-	
+
 	}
-	
+
 	print("Successfully created '%s'.\r\n", outfile);
 	return 0;
-
 }
+
