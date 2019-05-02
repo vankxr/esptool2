@@ -14,7 +14,7 @@ esptool2: esptool2.o esptool2_elf.o
 	@$(LD) -o $@ $^
 
 install:
-	@cp ./esptool2 /usr/bin
+	@cp ./esptool2 /usr/local/bin
 
 clean:
 	@echo "RM *.o esptool2 esptool2.exe"
